@@ -11,35 +11,67 @@ jobs:
 
     steps:
 
+      # 1️⃣ Checkout code
       - name: Checkout code
         uses: actions/checkout@v3
 
+      # 2️⃣ Setup Node.js for Angular
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '20'
 
+      # 3️⃣ Build Angular app
       - name: Build Angular app
         working-directory: ./angular-app
         run: |
           npm install
           npm run build --prod
 
-
+      # 4️⃣ Setup Java for Spring Boot
       - name: Setup Java
         uses: actions/setup-java@v3
         with:
           distribution: temurin
           java-version: '17'
 
+      # 5️⃣ Build Spring Boot app
       - name: Build Spring Boot app
         working-directory: ./springboot
         run: ./mvnw clean package -DskipTests
 
-
+      # 6️⃣ Setup Docker
       - name: Setup Docker
         uses: docker/setup-buildx-action@v2
 
+      # 7️⃣ Log in to Docker Hub
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # 8️⃣ Build Docker images
+      - name: Build backend Docker image
+        working-directory: ./springboot
+        run: |
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/springboot-app:latest .
+
+      - name: Build frontend Docker image
+        working-directory: ./angular-app
+        run: |
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/angular-app:latest .
+
+      # 9️⃣ Push Docker images
+      - name: Push backend image
+        run: |
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/springboot-app:latest
+
+      - name: Push frontend image
+        run: |
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/angular-app:latest
+
+      # 🔟 Test application with Docker Compose
       - name: Build and run Docker Compose
         run: |
           docker compose build
